@@ -8,6 +8,7 @@ use App\Http\Controllers\API\OwnerController;
 use App\Http\Controllers\API\Owner\PropertyController;
 use App\Http\Controllers\API\Owner\RoomController;
 use App\Http\Controllers\API\User\PublicPropertyController;
+use App\Http\Controllers\API\BookingController;
 
 // 🔐 AUTH ROUTES
 Route::post('/register', [AuthController::class, 'register']);
@@ -40,6 +41,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 👤 USER ROUTES
     Route::middleware('role:user')->prefix('user')->name('user.')->group(function () {
+        Route::get('/dashboard', function () {
+            return response()->json(['message' => 'Welcome, User']);
+        })->name('dashboard');
         Route::get('/profile', function (Request $request) {
             return $request->user();
         })->name('profile');
@@ -47,5 +51,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('properties', [PublicPropertyController::class, 'index']);
         Route::get('properties/{id}', [PublicPropertyController::class, 'show']);
         Route::get('rooms/{roomId}', [PublicPropertyController::class, 'roomDetail']);
+        Route::post('rooms/{room}/bookings', [BookingController::class, 'store']);
     });
 });

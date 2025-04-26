@@ -40,7 +40,21 @@ class PublicPropertyController extends Controller
     // Show detail room + availability
     public function roomDetail($roomId)
     {
-        $room = Room::with(['property', 'availabilities'])->findOrFail($roomId);
-        return response()->json($room);
+        $room = Room::with(['property', 'availabilities' => function($query) {
+            $query->where('date', '>=', now()->format('Y-m-d'))
+                  ->orderBy('date');
+        }])->findOrFail($roomId);
+    
+        return response()->json([
+            'room' => $room,
+            'booking_info' => [
+                'min_date' => now()->format('Y-m-d'),
+                'max_quantity' => $room->stock,
+                'price_range' => [
+                    'default' => $room->price,
+                    'custom' => $room->availabilities->pluck('custom_price', 'date')
+                ]
+            ]
+        ]);
     }
 }

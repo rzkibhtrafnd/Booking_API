@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Property;
 use App\Models\Room;
 use App\Models\RoomAvailability;
+use App\Models\Booking;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Carbon\CarbonPeriod;
 
 class RoomController extends Controller
 {
@@ -44,7 +46,7 @@ class RoomController extends Controller
         // Validate property ownership
         $property = Property::where('user_id', auth()->id())
             ->find($request->property_id);
-            
+
         if (!$property) {
             return response()->json([
                 'message' => 'Property not found or not owned by you'
@@ -186,35 +188,56 @@ class RoomController extends Controller
                 $query->where('user_id', auth()->id());
             })
             ->findOrFail($id);
-
+    
         $request->validate([
             'start_date' => 'required|date|after_or_equal:today',
             'end_date' => 'required|date|after:start_date',
             'quantity' => 'nullable|integer|min:1'
         ]);
-
-        $availability = $room->getAvailableRooms(
-            $request->start_date,
-            $request->end_date
-        );
-
-        $quantity = $request->quantity ?? 1;
+    
+        $start = Carbon::parse($request->start_date);
+        $end = Carbon::parse($request->end_date);
+        $period = CarbonPeriod::create($start, $end->subDay());
+        
+        $availabilityData = [];
         $isAvailable = true;
-
-        foreach ($availability as $date => $data) {
-            if ($data['available'] < $quantity) {
+        $quantity = $request->quantity ?? 1;
+    
+        foreach ($period as $date) {
+            $dateStr = $date->format('Y-m-d');
+            
+            $availability = RoomAvailability::firstOrNew([
+                'room_id' => $room->id,
+                'date' => $dateStr
+            ]);
+            
+            $releasedQuantity = Booking::where('room_id', $room->id)
+                ->where('check_out', $dateStr)
+                ->where('status', 'confirmed')
+                ->sum('quantity');
+                
+            $actualAvailable = $room->stock 
+                - ($availability->booked_quantity ?? 0) 
+                + $releasedQuantity;
+                
+            $availabilityData[$dateStr] = [
+                'available' => $actualAvailable,
+                'custom_price' => $availability->custom_price ?? null
+            ];
+            
+            if ($actualAvailable < $quantity) {
                 $isAvailable = false;
-                break;
             }
         }
-
+    
         return response()->json([
             'is_available' => $isAvailable,
-            'availability' => $availability,
+            'availability' => $availabilityData,
             'required_quantity' => $quantity,
             'room_stock' => $room->stock
         ]);
     }
+
 
     // Helper method
     protected function updateRoomAvailabilities($roomId, $availabilities)

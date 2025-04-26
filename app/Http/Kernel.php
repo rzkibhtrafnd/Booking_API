@@ -3,6 +3,7 @@
 namespace App\Http;
 
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Illuminate\Console\Scheduling\Schedule;
 
 class Kernel extends HttpKernel
 {
@@ -66,4 +67,13 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'role' => \App\Http\Middleware\RoleMiddleware::class,
     ];
+
+    protected $commands = [
+        \App\Console\Commands\UpdateRoomAvailability::class,
+    ];
+    
+    protected function schedule(Schedule $schedule)
+    {
+        $schedule->command('rooms:update-availability')->dailyAt('00:01');
+    }
 }
