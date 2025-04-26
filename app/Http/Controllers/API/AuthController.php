@@ -1,6 +1,5 @@
 <?php
 
-// app/Http/Controllers/API/AuthController.php
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
@@ -12,56 +11,55 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     // Register hanya untuk role = user
-    public function register(Request $req)
+    public function register(Request $request)
     {
-        $req->validate([
-            'name'                  => 'required|string|max:255',
-            'email'                 => 'required|string|email|unique:users',
-            'password'              => 'required|string|confirmed|min:8',
+        $request->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users',
+            'password' => 'required|string|confirmed|min:8',
         ]);
 
         $user = User::create([
-            'name'     => $req->name,
-            'email'    => $req->email,
-            'password' => Hash::make($req->password),
+            'name'     => $request->name,
+            'email'    => $request->email,
+            'password' => Hash::make($request->password),
             'role'     => 'user',
         ]);
 
-        $token = $user->createToken('api_token')->plainTextToken;
-
         return response()->json([
             'user'  => $user,
-            'token' => $token,
+            'token' => $user->createToken('api_token')->plainTextToken,
         ], 201);
     }
 
     // Login untuk semua role
-    public function login(Request $req)
+    public function login(Request $request)
     {
-        $req->validate([
+        $request->validate([
             'email'    => 'required|email',
             'password' => 'required',
         ]);
 
-        $user = User::where('email', $req->email)->first();
-        if (! $user || ! Hash::check($req->password, $user->password)) {
+        $user = User::where('email', $request->email)->first();
+
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
 
-        $token = $user->createToken('api_token')->plainTextToken;
-
         return response()->json([
             'user'  => $user,
-            'token' => $token,
+            'token' => $user->createToken('api_token')->plainTextToken,
         ]);
     }
 
-    public function logout(Request $req)
+    public function logout(Request $request)
     {
-        $req->user()->currentAccessToken()->delete();
-        return response()->json(['message' => 'Logged out']);
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'message' => 'Logged out successfully.',
+        ]);
     }
 }
-

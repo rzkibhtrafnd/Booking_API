@@ -45,12 +45,6 @@ class Booking extends Model
         return $this->belongsTo(Room::class);
     }
 
-    public function canBeCancelled(): bool
-    {
-        return $this->status === 'confirmed' 
-            && $this->check_in > now()->addDays(1);
-    }
-
     public function getNightsAttribute(): int
     {
         return Carbon::parse($this->check_in)

@@ -12,6 +12,7 @@ class OwnerController extends Controller
     public function index()
     {
         $owners = User::where('role', 'owner')->get();
+
         return response()->json($owners);
     }
 
@@ -20,7 +21,7 @@ class OwnerController extends Controller
         $request->validate([
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|unique:users,email',
-            'password' => 'required|min:6',
+            'password' => 'required|string|min:6',
         ]);
 
         $owner = User::create([
@@ -39,6 +40,7 @@ class OwnerController extends Controller
     public function show($id)
     {
         $owner = User::where('role', 'owner')->findOrFail($id);
+
         return response()->json($owner);
     }
 
@@ -47,7 +49,11 @@ class OwnerController extends Controller
         $owner = User::where('role', 'owner')->findOrFail($id);
 
         $owner->update($request->only(['name', 'email']));
-        return response()->json(['message' => 'Owner updated.', 'data' => $owner]);
+
+        return response()->json([
+            'message' => 'Owner updated successfully.',
+            'data'    => $owner,
+        ]);
     }
 
     public function destroy($id)
@@ -55,6 +61,8 @@ class OwnerController extends Controller
         $owner = User::where('role', 'owner')->findOrFail($id);
         $owner->delete();
 
-        return response()->json(['message' => 'Owner deleted.']);
+        return response()->json([
+            'message' => 'Owner deleted successfully.',
+        ]);
     }
 }

@@ -14,31 +14,31 @@ class PropertyController extends Controller
     public function index()
     {
         $properties = Property::with('photos')->where('user_id', auth()->id())->get();
+
         return response()->json($properties);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'required|string|max:255',
-            'description' => 'required|string',
-            'address' => 'required|string|max:255',
-            'city' => 'required|string|max:255',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
-            'main_image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'additional_images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+            'name'               => 'required|string|max:255',
+            'type'               => 'required|string|max:255',
+            'description'        => 'required|string',
+            'address'            => 'required|string|max:255',
+            'city'               => 'required|string|max:255',
+            'latitude'           => 'required|numeric',
+            'longitude'          => 'required|numeric',
+            'main_image'         => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'additional_images.*'=> 'image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        // Memastikan user mengirim reques dengan benar
-        if (!User::find(auth()->id())) {
+        if (! User::find(auth()->id())) {
             return response()->json(['message' => 'User not found'], 404);
         }
 
         $property = Property::create([
             'user_id' => auth()->id(),
-            ...$request->only(['name', 'type', 'description', 'address', 'city', 'latitude', 'longitude'])
+            ...$request->only(['name', 'type', 'description', 'address', 'city', 'latitude', 'longitude']),
         ]);
 
         // Simpan gambar utama
@@ -54,8 +54,8 @@ class PropertyController extends Controller
         }
 
         return response()->json([
-            'message' => 'Property created successfully.',
-            'property' => $property->load('photos')
+            'message'  => 'Property created successfully.',
+            'property' => $property->load('photos'),
         ], 201);
     }
 
@@ -75,17 +75,17 @@ class PropertyController extends Controller
         }
 
         $request->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'required|string|max:255',
-            'description' => 'required|string',
-            'address' => 'required|string|max:255',
-            'city' => 'required|string|max:255',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
-            'main_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'additional_images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'deleted_image_ids' => 'array',
-            'deleted_image_ids.*' => 'integer|exists:property_photos,id',
+            'name'               => 'required|string|max:255',
+            'type'               => 'required|string|max:255',
+            'description'        => 'required|string',
+            'address'            => 'required|string|max:255',
+            'city'               => 'required|string|max:255',
+            'latitude'           => 'required|numeric',
+            'longitude'          => 'required|numeric',
+            'main_image'         => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'additional_images.*'=> 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'deleted_image_ids'  => 'array',
+            'deleted_image_ids.*'=> 'integer|exists:property_photos,id',
         ]);
 
         $property->update($request->except(['main_image', 'additional_images', 'deleted_image_ids']));
@@ -120,8 +120,8 @@ class PropertyController extends Controller
         }
 
         return response()->json([
-            'message' => 'Property updated successfully.',
-            'property' => $property->load('photos')
+            'message'  => 'Property updated successfully.',
+            'property' => $property->load('photos'),
         ]);
     }
 
@@ -147,8 +147,8 @@ class PropertyController extends Controller
 
         PropertyPhoto::create([
             'property_id' => $propertyId,
-            'img' => $path,
-            'img_main' => $isMain,
+            'img'         => $path,
+            'img_main'    => $isMain,
         ]);
     }
 }

@@ -14,7 +14,6 @@ class PublicPropertyController extends Controller
     {
         $query = Property::with('photos');
 
-        // Filter by city, type, or name
         if ($request->has('city')) {
             $query->where('city', 'like', '%' . $request->city . '%');
         }
@@ -27,32 +26,47 @@ class PublicPropertyController extends Controller
             $query->where('name', 'like', '%' . $request->name . '%');
         }
 
-        return response()->json($query->paginate(10));
+        $properties = $query->paginate(10);
+
+        return response()->json([
+            'message' => 'Properties retrieved successfully',
+            'data' => $properties
+        ]);
     }
 
     // Show detail property + list rooms
     public function show($id)
     {
         $property = Property::with(['photos', 'rooms'])->findOrFail($id);
-        return response()->json($property);
+
+        return response()->json([
+            'message' => 'Property detail retrieved successfully',
+            'data' => $property
+        ]);
     }
 
     // Show detail room + availability
     public function roomDetail($roomId)
     {
-        $room = Room::with(['property', 'availabilities' => function($query) {
-            $query->where('date', '>=', now()->format('Y-m-d'))
-                  ->orderBy('date');
-        }])->findOrFail($roomId);
-    
+        $room = Room::with([
+            'property',
+            'availabilities' => function ($query) {
+                $query->where('date', '>=', now()->format('Y-m-d'))
+                      ->orderBy('date');
+            }
+        ])->findOrFail($roomId);
+
         return response()->json([
-            'room' => $room,
-            'booking_info' => [
-                'min_date' => now()->format('Y-m-d'),
-                'max_quantity' => $room->stock,
-                'price_range' => [
-                    'default' => $room->price,
-                    'custom' => $room->availabilities->pluck('custom_price', 'date')
+            'message' => 'Room detail retrieved successfully',
+            'data' => [
+                'room' => $room,
+                'booking_info' => [
+                    'min_date' => now()->format('Y-m-d'),
+                    'max_quantity' => $room->stock,
+                    'price_range' => [
+                        'default' => $room->price,
+                        'custom' => $room->availabilities->pluck('custom_price', 'date')
+                    ]
                 ]
             ]
         ]);

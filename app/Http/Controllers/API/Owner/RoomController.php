@@ -15,11 +15,10 @@ use Illuminate\Support\Facades\Validator;
 
 class RoomController extends Controller
 {
-    // Get all rooms owned by current user
     public function index()
     {
         $rooms = Room::with(['property', 'availabilities'])
-            ->whereHas('property', function($query) {
+            ->whereHas('property', function ($query) {
                 $query->where('user_id', auth()->id());
             })
             ->get();
@@ -27,7 +26,6 @@ class RoomController extends Controller
         return response()->json($rooms);
     }
 
-    // Create new room
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -43,7 +41,6 @@ class RoomController extends Controller
             'availabilities.*.custom_price' => 'nullable|numeric|min:0',
         ]);
 
-        // Validate property ownership
         $property = Property::where('user_id', auth()->id())
             ->find($request->property_id);
 
@@ -73,10 +70,7 @@ class RoomController extends Controller
             ]);
 
             if ($request->has('availabilities')) {
-                $this->updateRoomAvailabilities(
-                    $room->id, 
-                    $request->availabilities
-                );
+                $this->updateRoomAvailabilities($room->id, $request->availabilities);
             }
 
             DB::commit();
@@ -85,7 +79,6 @@ class RoomController extends Controller
                 'message' => 'Room created successfully',
                 'room' => $room->load('availabilities', 'property')
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -95,11 +88,10 @@ class RoomController extends Controller
         }
     }
 
-    // Get single room
     public function show($id)
     {
         $room = Room::with(['property', 'availabilities'])
-            ->whereHas('property', function($query) {
+            ->whereHas('property', function ($query) {
                 $query->where('user_id', auth()->id());
             })
             ->findOrFail($id);
@@ -107,10 +99,9 @@ class RoomController extends Controller
         return response()->json($room);
     }
 
-    // Update room
     public function update(Request $request, $id)
     {
-        $room = Room::whereHas('property', function($query) {
+        $room = Room::whereHas('property', function ($query) {
                 $query->where('user_id', auth()->id());
             })
             ->findOrFail($id);
@@ -146,10 +137,7 @@ class RoomController extends Controller
             ]);
 
             if ($request->has('availabilities')) {
-                $this->updateRoomAvailabilities(
-                    $room->id, 
-                    $request->availabilities
-                );
+                $this->updateRoomAvailabilities($room->id, $request->availabilities);
             }
 
             DB::commit();
@@ -158,7 +146,6 @@ class RoomController extends Controller
                 'message' => 'Room updated successfully',
                 'room' => $room->load('availabilities', 'property')
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -168,10 +155,9 @@ class RoomController extends Controller
         }
     }
 
-    // Delete room
     public function destroy($id)
     {
-        $room = Room::whereHas('property', function($query) {
+        $room = Room::whereHas('property', function ($query) {
                 $query->where('user_id', auth()->id());
             })
             ->findOrFail($id);
@@ -181,55 +167,54 @@ class RoomController extends Controller
         return response()->json(['message' => 'Room deleted successfully']);
     }
 
-    // Check availability
     public function checkAvailability(Request $request, $id)
     {
-        $room = Room::whereHas('property', function($query) {
+        $room = Room::whereHas('property', function ($query) {
                 $query->where('user_id', auth()->id());
             })
             ->findOrFail($id);
-    
+
         $request->validate([
             'start_date' => 'required|date|after_or_equal:today',
             'end_date' => 'required|date|after:start_date',
             'quantity' => 'nullable|integer|min:1'
         ]);
-    
+
         $start = Carbon::parse($request->start_date);
         $end = Carbon::parse($request->end_date);
         $period = CarbonPeriod::create($start, $end->subDay());
-        
+
         $availabilityData = [];
         $isAvailable = true;
         $quantity = $request->quantity ?? 1;
-    
+
         foreach ($period as $date) {
             $dateStr = $date->format('Y-m-d');
-            
+
             $availability = RoomAvailability::firstOrNew([
                 'room_id' => $room->id,
                 'date' => $dateStr
             ]);
-            
+
             $releasedQuantity = Booking::where('room_id', $room->id)
                 ->where('check_out', $dateStr)
                 ->where('status', 'confirmed')
                 ->sum('quantity');
-                
-            $actualAvailable = $room->stock 
-                - ($availability->booked_quantity ?? 0) 
+
+            $actualAvailable = $room->stock
+                - ($availability->booked_quantity ?? 0)
                 + $releasedQuantity;
-                
+
             $availabilityData[$dateStr] = [
                 'available' => $actualAvailable,
                 'custom_price' => $availability->custom_price ?? null
             ];
-            
+
             if ($actualAvailable < $quantity) {
                 $isAvailable = false;
             }
         }
-    
+
         return response()->json([
             'is_available' => $isAvailable,
             'availability' => $availabilityData,
@@ -238,8 +223,6 @@ class RoomController extends Controller
         ]);
     }
 
-
-    // Helper method
     protected function updateRoomAvailabilities($roomId, $availabilities)
     {
         foreach ($availabilities as $availability) {
