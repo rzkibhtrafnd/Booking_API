@@ -4,6 +4,8 @@
 This repository contains a RESTful API for a property booking system. The API allows for user registration and authentication, property management, room management, booking handling, and payment processing.
 
 ## Table of Contents
+
+- [Installation Guide](#installation-guide)
 - [Authentication](#authentication)
 - [API Endpoints](#api-endpoints)
   - [Auth Controller](#auth-controller)
@@ -15,6 +17,117 @@ This repository contains a RESTful API for a property booking system. The API al
   - [Payment Controller](#payment-controller)
 - [Use Cases](#use-cases)
 - [Error Handling](#error-handling)
+
+
+# Installation Guide for Booking API
+
+This guide will walk you through the process of installing and setting up the Booking API on your local development environment.
+
+---
+
+## Prerequisites
+
+Before you begin, make sure you have the following installed on your system:
+
+- PHP 8.1 or higher
+- Composer
+- MySQL or MariaDB
+- Git
+- Node.js and npm (for frontend assets)
+- A web server like Apache or Nginx (or you can use Laravel's built-in server for development)
+
+---
+
+## Step 1: Clone the Repository
+
+First, clone the repository from GitHub:
+
+```bash
+git clone https://github.com/rzkibhtrafnd/Booking_API.git
+cd Booking_API
+```
+
+## Step 2: Install PHP Dependencies
+Install the required PHP packages using Composer:
+
+```bash
+composer install
+```
+
+## Step 3: Environment Configuration
+Copy the example environment file and configure it for your system:
+
+```bash
+cp .env.example .env
+```
+
+Now, edit the .env file and update the database connection settings:
+
+```bash
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=booking_api_db
+DB_USERNAME=your_db_username
+DB_PASSWORD=your_db_password
+```
+
+Also, configure any other environment-specific settings like mail server, app URL, etc.
+
+## Step 4: Generate Application Key
+Generate a unique application key:
+
+```bash
+php artisan key:generate
+```
+
+## Step 5: Run Migrations and Seeders
+Run the migrations to create tables in your database:
+
+```bash
+php artisan migrate
+```
+
+Optionally, seed the database with initial data:
+
+```bash
+php artisan db:seed
+```
+
+## Step 6: Link Storage
+Link the storage directory to make uploaded files accessible from the web:
+
+```bash
+php artisan storage:link
+```
+
+## Step 7: Install Frontend Dependencies (if applicable)
+If the project includes frontend assets:
+
+```bash
+npm install
+npm run dev
+```
+
+## Step 8: Configure Permissions
+Make sure the storage and bootstrap/cache directories are writable by your web server:
+
+```bash
+chmod -R 775 storage bootstrap/cache
+```
+
+## Step 9: Start the Development Server
+Start Laravel's built-in development server:
+
+```bash
+php artisan serve
+```
+
+The API will now be accessible at:
+
+```bash
+http://localhost:8000
+```
 
 ## Authentication
 The API uses token-based authentication. To access protected endpoints, you need to include the token in the Authorization header:
