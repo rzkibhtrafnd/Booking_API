@@ -28,6 +28,7 @@ class Booking extends Model
         'check_in' => 'date',
         'check_out' => 'date',
         'total_price' => 'decimal:2',
+        'status' => 'string'
     ];
 
     public function user(): BelongsTo
@@ -43,6 +44,16 @@ class Booking extends Model
     public function room(): BelongsTo
     {
         return $this->belongsTo(Room::class);
+    }
+
+    public function userProfile()
+    {
+        return $this->hasOne(UserProfile::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasOne(Payment::class);
     }
 
     public function getNightsAttribute(): int

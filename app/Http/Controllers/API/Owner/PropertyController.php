@@ -3,152 +3,114 @@
 namespace App\Http\Controllers\API\Owner;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Resources\PropertyResource;
+use App\Http\Requests\PropertyRequest;
 use App\Models\Property;
 use App\Models\PropertyPhoto;
 use Illuminate\Support\Facades\Storage;
-use App\Models\User;
 
 class PropertyController extends Controller
 {
+    // Menampilkan daftar properti milik owner
     public function index()
     {
-        $properties = Property::with('photos')->where('user_id', auth()->id())->get();
+        $properties = Property::with('photos')
+            ->where('user_id', auth()->id())
+            ->get();
 
-        return response()->json($properties);
+        return PropertyResource::collection($properties);
     }
 
-    public function store(Request $request)
+    // Menyimpan properti baru
+    public function store(PropertyRequest $request)
     {
-        $request->validate([
-            'name'               => 'required|string|max:255',
-            'type'               => 'required|string|max:255',
-            'description'        => 'required|string',
-            'address'            => 'required|string|max:255',
-            'city'               => 'required|string|max:255',
-            'latitude'           => 'required|numeric',
-            'longitude'          => 'required|numeric',
-            'main_image'         => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'additional_images.*'=> 'image|mimes:jpeg,png,jpg,gif|max:2048',
-        ]);
+        $property = Property::create(array_merge(
+            $request->validated(),
+            ['user_id' => auth()->id()]
+        ));
 
-        if (! User::find(auth()->id())) {
-            return response()->json(['message' => 'User not found'], 404);
+        // Menyimpan foto utama
+        if ($file = $request->file('main_image')) {
+            $this->storePhoto($property, $file, true);
         }
 
-        $property = Property::create([
-            'user_id' => auth()->id(),
-            ...$request->only(['name', 'type', 'description', 'address', 'city', 'latitude', 'longitude']),
-        ]);
-
-        // Simpan gambar utama
-        if ($request->hasFile('main_image')) {
-            $this->storePhoto($property->id, $request->file('main_image'), true);
+        // Menyimpan foto tambahan
+        foreach ($request->file('additional_images', []) as $image) {
+            $this->storePhoto($property, $image);
         }
 
-        // Simpan gambar tambahan
-        if ($request->hasFile('additional_images')) {
-            foreach ($request->file('additional_images') as $image) {
-                $this->storePhoto($property->id, $image);
-            }
-        }
-
-        return response()->json([
-            'message'  => 'Property created successfully.',
-            'property' => $property->load('photos'),
-        ], 201);
+        $property->load('photos');
+        return (new PropertyResource($property))
+               ->response()->setStatusCode(201);
     }
 
+    // Menampilkan detail properti
     public function show(Property $property)
     {
-        if ($property->user_id !== auth()->id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        return response()->json($property->load('photos'));
+        $this->authorize('view', $property);
+        return new PropertyResource($property->load('photos'));
     }
 
-    public function update(Request $request, Property $property)
+    // Mengupdate properti
+    public function update(PropertyRequest $request, Property $property)
     {
-        if ($property->user_id !== auth()->id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $this->authorize('update', $property);
 
-        $request->validate([
-            'name'               => 'required|string|max:255',
-            'type'               => 'required|string|max:255',
-            'description'        => 'required|string',
-            'address'            => 'required|string|max:255',
-            'city'               => 'required|string|max:255',
-            'latitude'           => 'required|numeric',
-            'longitude'          => 'required|numeric',
-            'main_image'         => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'additional_images.*'=> 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'deleted_image_ids'  => 'array',
-            'deleted_image_ids.*'=> 'integer|exists:property_photos,id',
-        ]);
+        $property->update($request->validated());
 
-        $property->update($request->except(['main_image', 'additional_images', 'deleted_image_ids']));
-
-        // Hapus gambar yang dipilih
-        if ($request->filled('deleted_image_ids')) {
-            $photosToDelete = PropertyPhoto::whereIn('id', $request->deleted_image_ids)
-                ->where('property_id', $property->id)
-                ->get();
-
-            foreach ($photosToDelete as $photo) {
+        // Menghapus foto yang dipilih
+        foreach ($request->input('deleted_image_ids', []) as $photoId) {
+            $photo = PropertyPhoto::where('property_id', $property->id)
+                                  ->findOrFail($photoId);
+            if (Storage::disk('public')->exists($photo->img)) {
                 Storage::disk('public')->delete($photo->img);
-                $photo->delete();
             }
+            $photo->delete();
         }
 
-        // Update gambar utama
-        if ($request->hasFile('main_image')) {
-            $oldMain = $property->photos()->where('img_main', true)->first();
-            if ($oldMain) {
-                Storage::disk('public')->delete($oldMain->img);
-                $oldMain->delete();
+        // Update atau tambah foto utama
+        if ($file = $request->file('main_image')) {
+            $old = $property->photos()->where('img_main', true)->first();
+            if ($old) {
+                Storage::disk('public')->delete($old->img);
+                $old->delete();
             }
-            $this->storePhoto($property->id, $request->file('main_image'), true);
+            $this->storePhoto($property, $file, true);
         }
 
-        // Tambah gambar tambahan baru
-        if ($request->hasFile('additional_images')) {
-            foreach ($request->file('additional_images') as $image) {
-                $this->storePhoto($property->id, $image);
-            }
+        // Menambah foto tambahan baru
+        foreach ($request->file('additional_images', []) as $image) {
+            $this->storePhoto($property, $image);
         }
 
-        return response()->json([
-            'message'  => 'Property updated successfully.',
-            'property' => $property->load('photos'),
-        ]);
+        $property->load('photos');
+        return new PropertyResource($property);
     }
 
+    // Menghapus properti
     public function destroy(Property $property)
     {
-        if ($property->user_id !== auth()->id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $this->authorize('delete', $property);
 
         foreach ($property->photos as $photo) {
-            Storage::disk('public')->delete($photo->img);
+            if (Storage::disk('public')->exists($photo->img)) {
+                Storage::disk('public')->delete($photo->img);
+            }
             $photo->delete();
         }
 
         $property->delete();
-
-        return response()->json(['message' => 'Property deleted successfully.']);
+        return response()->json(['message'=>'Properti berhasil dihapus.']);
     }
 
-    private function storePhoto($propertyId, $image, $isMain = false)
+    // Menyimpan foto properti
+    private function storePhoto(Property $property, $file, bool $isMain = false)
     {
-        $path = $image->store('property_images', 'public');
-
+        $path = $file->store('property_images','public');
         PropertyPhoto::create([
-            'property_id' => $propertyId,
-            'img'         => $path,
-            'img_main'    => $isMain,
+            'property_id'=> $property->id,
+            'img'        => $path,
+            'img_main'   => $isMain,
         ]);
     }
 }

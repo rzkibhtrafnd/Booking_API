@@ -10,16 +10,20 @@ class Property extends Model
 {
     use HasFactory;
 
-
     protected $fillable = [
-        'id', 'user_id', 'name', 'type', 'description',
-        'address', 'city', 'latitude', 'longitude', 'rating', 'status'
+        'user_id','name','type','description',
+        'address','city','latitude','longitude','rating','status'
     ];
 
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
+    protected $hidden = [
+        'user_id','created_at','updated_at'
+    ];
+
+    protected $casts = [
+        'latitude'  => 'decimal:6',
+        'longitude' => 'decimal:6',
+        'rating'    => 'decimal:1',
+    ];
 
     public function photos()
     {

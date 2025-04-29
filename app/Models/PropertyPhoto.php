@@ -4,14 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 
 class PropertyPhoto extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'id', 'property_id', 'img', 'img_main'
+        'property_id','img','img_main'
+    ];
+
+    protected $hidden = [
+        'property_id','created_at','updated_at'
     ];
 
     protected $casts = [
